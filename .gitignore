@@ -214,3 +214,5 @@ logs/
 # Upload/temp files
 uploads/
 temp/
+bin/
+pyvenv.cfg
