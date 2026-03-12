@@ -1,0 +1,13 @@
+{# Partial: satu baris VM untuk tabel. Gunakan di index: {% for vm in machines %}{% include 'partials/_vm_row.html' %}{% endfor %} #}
+<tr>
+    <td><a href="{{ url_for('vm.vm_detail', machine_id=vm.id) }}">{{ vm.name }}</a></td>
+    <td>{{ vm.state }}</td>
+    <td>
+        <form action="{{ url_for('vm.start_vm', machine_id=vm.id) }}" method="post">
+            <button type="submit" class="btn btn-start">Start</button>
+        </form>
+        <form action="{{ url_for('vm.stop_vm', machine_id=vm.id) }}" method="post">
+            <button type="submit" class="btn btn-stop">Stop</button>
+        </form>
+    </td>
+</tr>

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Daftar VM – VBox-Manage{% endblock %}
+
+{% block content %}
+<p>Daftar Virtual Machine. Ubah tampilan di <code>templates/index.html</code> (Jinja).</p>
+
+{% if error %}
+    <p class="flash error">{{ error }}</p>
+{% endif %}
+
+{% if machines %}
+<table>
+    <thead>
+        <tr>
+            <th>Nama</th>
+            <th>Status</th>
+            <th>Aksi</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for vm in machines %}
+        <tr>
+            <td><a href="{{ url_for('vm.vm_detail', machine_id=vm.id) }}">{{ vm.name }}</a></td>
+            <td>{{ vm.state }}</td>
+            <td>
+                <form action="{{ url_for('vm.start_vm', machine_id=vm.id) }}" method="post">
+                    <button type="submit" class="btn btn-start">Start</button>
+                </form>
+                <form action="{{ url_for('vm.stop_vm', machine_id=vm.id) }}" method="post">
+                    <button type="submit" class="btn btn-stop">Stop</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+    <p>Tidak ada VM atau vboxwebsrv tidak terjangkau. Pastikan vboxwebsrv berjalan.</p>
+{% endif %}
+{% endblock %}

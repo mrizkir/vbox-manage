@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ vm.name }} – VBox-Manage{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('vm.index') }}">&larr; Kembali ke daftar VM</a></p>
+<h2>{{ vm.name }}</h2>
+<p><strong>Status:</strong> {{ vm.state }}</p>
+<form action="{{ url_for('vm.start_vm', machine_id=vm.id) }}" method="post">
+    <button type="submit" class="btn btn-start">Start</button>
+</form>
+<form action="{{ url_for('vm.stop_vm', machine_id=vm.id) }}" method="post">
+    <button type="submit" class="btn btn-stop">Stop</button>
+</form>
+{% endblock %}

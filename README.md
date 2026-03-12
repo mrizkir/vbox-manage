@@ -50,7 +50,14 @@ venv\Scripts\activate           # Windows
 pip install -r requirements.txt
 ```
 
-### 4. Jalankan VBoxWebSrv
+### 4. Konfigurasi
+File `config.py` tidak di-commit (ada di `.gitignore`). Setelah clone, salin template konfigurasi:
+```bash
+cp config.example.py config.py
+```
+Atau set variabel lingkungan: `VBOX_HOST`, `VBOX_PORT`, `SECRET_KEY`.
+
+### 5. Jalankan VBoxWebSrv
 ```bash
 # macOS/Linux
 vboxwebsrv --authentication null --host 127.0.0.1 --port 18083
@@ -59,25 +66,52 @@ vboxwebsrv --authentication null --host 127.0.0.1 --port 18083
 VBoxWebSrv.exe --authentication null --host 127.0.0.1 --port 18083
 ```
 
-### 5. Jalankan aplikasi Flask
+### 6. Jalankan aplikasi Flask
 ```bash
 python app.py
 ```
 
-### 6. Akses di browser
+### 7. Akses di browser
 ```
 http://localhost:5000
 ```
 
-## 📁 Struktur Project
+## 📁 Struktur Project (MVC)
+
+- **Model**: `models/vbox_service.py` — akses ke VirtualBox SOAP (requests + xml.etree). Ubah hanya di sini jika format SOAP/endpoint berubah.
+- **View**: `templates/` — Jinja2. Ubah tampilan hanya di sini; bisa pakai partial (`templates/partials/`) dan filter Jinja.
+- **Controller**: `controllers/vm_controller.py` — route Flask yang memanggil model dan me-render view.
+
 ```
 vbox-manage/
-├── app.py              # File utama aplikasi Flask
-├── requirements.txt    # Daftar dependensi Python
-├── .gitignore          # File yang diabaikan git
-├── LICENSE             # Lisensi MIT
-└── README.md           # Dokumentasi project
+├── app.py                  # Entry point, create_app(), register blueprint
+├── config.py               # Konfigurasi (dipakai saat jalan; bisa di .gitignore)
+├── config.example.py      # Template config untuk di-commit; setelah clone: cp config.example.py config.py
+├── requirements.txt
+├── models/
+│   └── vbox_service.py     # SOAP client (list_machines, start_vm, stop_vm)
+├── controllers/
+│   └── vm_controller.py    # Blueprint vm_bp
+├── templates/
+│   ├── base.html           # Layout + flash messages
+│   ├── index.html          # Daftar VM
+│   ├── vm_detail.html      # Detail satu VM
+│   └── partials/           # Partial template (contoh: _vm_row.html)
+├── static/
+│   └── style.css           # CSS tambahan (opsional)
+├── .gitignore
+├── LICENSE
+└── README.md
 ```
+
+## 🛣️ Route
+
+| Method | Path | Keterangan |
+|--------|------|------------|
+| GET | `/` | Daftar VM |
+| GET | `/vm/<machine_id>` | Detail VM |
+| POST | `/vm/<machine_id>/start` | Jalankan VM |
+| POST | `/vm/<machine_id>/stop` | Hentikan VM |
 
 ## 📦 Requirements
 
