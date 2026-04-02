@@ -1,22 +1,37 @@
-### 1. Matikan otentikasi
+# Contoh koneksi VirtualBox Web Service (SOAP)
+
+Langkah-langkah di bawah ini mengasumsikan `vboxwebsrv` berjalan di `127.0.0.1:18083` dan otentikasi webservice dimatikan.
+
+---
+
+## 1. Matikan otentikasi webservice
+
 ```bash
 VBoxManage setproperty websrvauthlibrary null
 ```
 
-### 2. Cek apakah sudah dimatikan otentikasi-nya
-```
+## 2. Verifikasi properti sistem
+
+```bash
 VBoxManage list systemproperties
 ```
-Kemudian cari bagian Webservice auth. library
 
-Bila bernilai null, maka proses otentikasi di dalam vboxmanage berhasil dimatikan.
+Cari baris **Webservice auth. library**. Jika bernilai `null`, otentikasi webservice sudah dimatikan.
 
-### 3. Jalankan vboxsrv
+## 3. Jalankan vboxwebsrv
+
 ```bash
 vboxwebsrv --host 127.0.0.1 --port 18083
 ```
-### 4. Uji coba koneksi
-MAcos/Linux
+
+Biarkan proses ini berjalan di terminal terpisah.
+
+## 4. Uji koneksi (logon)
+
+Kirim permintaan SOAP `IWebsessionManager_logon` ke root URL webservice. Respons yang berisi `returnval` berarti koneksi berhasil; nilai itu dipakai sebagai **token sesi VirtualBox** untuk langkah berikutnya.
+
+### macOS / Linux
+
 ```bash
 curl -X POST http://localhost:18083/ \
   -H "Content-Type: text/xml" \
@@ -31,9 +46,9 @@ curl -X POST http://localhost:18083/ \
 </SOAP-ENV:Envelope>'
 ```
 
-Windows 10/11, di PowerShelll
+### Windows (PowerShell)
 
-```bash
+```powershell
 Invoke-WebRequest -Uri "http://localhost:18083/" `
   -Method POST `
   -ContentType "text/xml" `
@@ -48,9 +63,9 @@ Invoke-WebRequest -Uri "http://localhost:18083/" `
 </SOAP-ENV:Envelope>'
 ```
 
-outputnya:
+### Contoh respons sukses
 
-```
+```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:vbox="http://www.virtualbox.org/">
     <SOAP-ENV:Body>
@@ -63,112 +78,133 @@ outputnya:
 </SOAP-ENV:Envelope>
 ```
 
-Lihat bagian, returnval, terdapat nilai
+Isi elemen `returnval` (contoh: `634f0d8fd6ef0e49-0000000000000001`) adalah token yang dipakai sebagai `_this` pada `IVirtualBox_*` dan sebagai `refIVirtualBox` pada `getSessionObject`. Di dokumen ini token itu disebut **`VB_TOKEN`**.
 
-634f0d8fd6ef0e49-0000000000000001
+---
 
-berarti koneksi berhasil.
+## 5. Daftar VM (`IVirtualBox_getMachines`)
 
-Selanjutya koneksi, ke vbox api menggunakan: 634f0d8fd6ef0e49-0000000000000001
+Ganti `VB_TOKEN` dengan nilai `returnval` dari logon. Body XML dikirim dengan cara yang sama seperti langkah 4 (`POST`, `Content-Type: text/xml`).
 
-### 5. Mendapatkan daftar vms
-```
+```xml
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
     <vbox:IVirtualBox_getMachines>
-      <_this>634f0d8fd6ef0e49-0000000000000001</_this>
+      <_this>VB_TOKEN</_this>
     </vbox:IVirtualBox_getMachines>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
 
-### 6. Informasi Detail sebuah VM
-Nama VM:
-```
+---
+
+## 6. Detail sebuah VM
+
+Ganti `MACHINE_HANDLE` dengan ID mesin dari hasil `getMachines` (contoh di bawah memakai placeholder `70e7c3891a68e934-0000000000000002`).
+
+### Nama VM
+
+```xml
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
     <vbox:IMachine_getName>
-      <_this>70e7c3891a68e934-0000000000000002</_this>
+      <_this>MACHINE_HANDLE</_this>
     </vbox:IMachine_getName>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
-Status (State) VM (PoweredOn, PoweredOff):
-```
+
+### Status (PoweredOn, PoweredOff, …)
+
+```xml
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
     <vbox:IMachine_getState>
-      <_this>70e7c3891a68e934-0000000000000002</_this>
+      <_this>MACHINE_HANDLE</_this>
     </vbox:IMachine_getState>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
-Jumlah CPU
-```
+
+### Jumlah CPU
+
+```xml
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
     <vbox:IMachine_getCPUCount>
-      <_this>70e7c3891a68e934-0000000000000002</_this>
+      <_this>MACHINE_HANDLE</_this>
     </vbox:IMachine_getCPUCount>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
-Ukuran RAM
-```
+
+### Ukuran RAM (MB)
+
+```xml
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
     <vbox:IMachine_getMemorySize>
-      <_this>70e7c3891a68e934-0000000000000002</_this>
+      <_this>MACHINE_HANDLE</_this>
     </vbox:IMachine_getMemorySize>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
-Tipe OS
-```
+
+### Tipe OS
+
+```xml
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
     <vbox:IMachine_getOSTypeId>
-      <_this>70e7c3891a68e934-0000000000000002</_this>
+      <_this>MACHINE_HANDLE</_this>
     </vbox:IMachine_getOSTypeId>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
-ID VM
-```
+
+### ID VM
+
+```xml
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
     <vbox:IMachine_getId>
-      <_this>70e7c3891a68e934-0000000000000002</_this>
+      <_this>MACHINE_HANDLE</_this>
     </vbox:IMachine_getId>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
 
-### 7. Menjalankan VM (PoweredOn)
-Sebelum menyalakan dapatkan SESSION_HANDLE:
+---
 
-```
+## 7. Menjalankan VM (PoweredOn)
+
+### 7.1 Ambil objek sesi (`IWebsessionManager_getSessionObject`)
+
+Isi `refIVirtualBox` dengan **`VB_TOKEN`** (sama dengan `returnval` dari `IWebsessionManager_logon`).
+
+```xml
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
     <vbox:IWebsessionManager_getSessionObject>
-      <refIVirtualBox>TOKEN</refIVirtualBox>
+      <refIVirtualBox>VB_TOKEN</refIVirtualBox>
     </vbox:IWebsessionManager_getSessionObject>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
-TOKEN di isi dari hasil (IWebsessionManager_logonResponse): 
 
-selanjutnya:
+Dari respons, ambil handle sesi sebagai **`SESSION_HANDLE`**.
 
-```
+### 7.2 Launch (`IMachine_launchVMProcess`)
+
+```xml
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
@@ -181,9 +217,8 @@ selanjutnya:
 </SOAP-ENV:Envelope>
 ```
 
-MACHINE_HANDLE: diperoleh dari salah satu id IVirtualBox_getMachines
-SESSION_HANDLE: diperoleh dari IWebsessionManager_getSessionObject
-type bisa diisi:
-headless → tanpa GUI (untuk server)
-gui → dengan tampilan jendela VM
-
+| Placeholder        | Sumber |
+|--------------------|--------|
+| `MACHINE_HANDLE`   | Salah satu mesin dari `IVirtualBox_getMachines` |
+| `SESSION_HANDLE`   | Respons `IWebsessionManager_getSessionObject` |
+| `type`             | `headless` (tanpa GUI, cocok untuk server) atau `gui` (jendela VM) |
