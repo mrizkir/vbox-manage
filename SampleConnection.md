@@ -84,7 +84,7 @@ Selanjutya koneksi, ke vbox api menggunakan: 634f0d8fd6ef0e49-0000000000000001
 ```
 
 ### 6. Informasi Detail sebuah VM
-
+Nama VM:
 ```
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
@@ -92,6 +92,17 @@ Selanjutya koneksi, ke vbox api menggunakan: 634f0d8fd6ef0e49-0000000000000001
     <vbox:IMachine_getName>
       <_this>70e7c3891a68e934-0000000000000002</_this>
     </vbox:IMachine_getName>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+```
+Status (State) VM (Nyala, Off):
+```
+<?xml version="1.0"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
+  <SOAP-ENV:Body>
+    <vbox:IMachine_getState>
+      <_this>70e7c3891a68e934-0000000000000002</_this>
+    </vbox:IMachine_getState>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
