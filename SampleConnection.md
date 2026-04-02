@@ -222,3 +222,8 @@ Dari respons, ambil handle sesi sebagai **`SESSION_HANDLE`**.
 | `MACHINE_HANDLE`   | Salah satu mesin dari `IVirtualBox_getMachines` |
 | `SESSION_HANDLE`   | Respons `IWebsessionManager_getSessionObject` |
 | `type`             | `headless` (tanpa GUI, cocok untuk server) atau `gui` (jendela VM) |
+
+
+## 8. Mematikan VM (PoweredOff)
+
+### 8.1 Ambil objek sesi (`IWebsessionManager_getSessionObject`)
