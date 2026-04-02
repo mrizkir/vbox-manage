@@ -155,6 +155,7 @@ ID VM
 Sebelum menyalakan dapatkan SESSION_HANDLE:
 
 ```
+<?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
     <vbox:IWebsessionManager_getSessionObject>
