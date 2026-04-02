@@ -72,7 +72,7 @@ berarti koneksi berhasil.
 Selanjutya koneksi, ke vbox api menggunakan: 634f0d8fd6ef0e49-0000000000000001
 
 ### 5. Mendapatkan daftar vms
-```bash
+```
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
   <SOAP-ENV:Body>
@@ -80,7 +80,7 @@ Selanjutya koneksi, ke vbox api menggunakan: 634f0d8fd6ef0e49-0000000000000001
       <_this>634f0d8fd6ef0e49-0000000000000001</_this>
     </vbox:IVirtualBox_getMachines>
   </SOAP-ENV:Body>
-</SOAP-ENV:Envelope>'
+</SOAP-ENV:Envelope>
 ```
 
 ### 6. Informasi Detail sebuah VM
@@ -95,7 +95,7 @@ Nama VM:
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
-Status (State) VM (Nyala, Off):
+Status (State) VM (PoweredOn, PoweredOff):
 ```
 <?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
@@ -103,6 +103,50 @@ Status (State) VM (Nyala, Off):
     <vbox:IMachine_getState>
       <_this>70e7c3891a68e934-0000000000000002</_this>
     </vbox:IMachine_getState>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+```
+Jumlah CPU
+```
+<?xml version="1.0"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
+  <SOAP-ENV:Body>
+    <vbox:IMachine_getCPUCount>
+      <_this>70e7c3891a68e934-0000000000000002</_this>
+    </vbox:IMachine_getCPUCount>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+```
+Ukuran RAM
+```
+<?xml version="1.0"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
+  <SOAP-ENV:Body>
+    <vbox:IMachine_getMemorySize>
+      <_this>70e7c3891a68e934-0000000000000002</_this>
+    </vbox:IMachine_getMemorySize>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+```
+Tipe OS
+```
+<?xml version="1.0"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
+  <SOAP-ENV:Body>
+    <vbox:IMachine_getOSTypeId>
+      <_this>70e7c3891a68e934-0000000000000002</_this>
+    </vbox:IMachine_getOSTypeId>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+```
+ID VM
+```
+<?xml version="1.0"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
+  <SOAP-ENV:Body>
+    <vbox:IMachine_getId>
+      <_this>70e7c3891a68e934-0000000000000002</_this>
+    </vbox:IMachine_getId>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
