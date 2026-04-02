@@ -2,7 +2,7 @@
 Controller: Menghubungkan route (view layer) dengan model (VBoxService).
 Tidak berisi logika SOAP; hanya memanggil model dan merender template / redirect.
 """
-from flask import Blueprint, render_template, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, current_app, request
 from models.vbox_service import VBoxService
 
 vm_bp = Blueprint("vm", __name__)
@@ -22,40 +22,58 @@ def index():
     return render_template("index.html", machines=machines, error=error)
 
 
+def _redirect_after_vm_action(machine_id):
+    """Dari halaman detail (`next=detail` di URL form), kembali ke detail; selain itu ke daftar."""
+    if request.args.get("next") == "detail":
+        return redirect(url_for("vm.vm_detail", machine_id=machine_id))
+    return redirect(url_for("vm.index"))
+
+
 @vm_bp.route("/vm/<machine_id>/start", methods=["POST"])
 def start_vm(machine_id):
-    """Jalankan VM lalu redirect ke index dengan flash message."""
+    """Jalankan VM lalu redirect ke halaman detail dengan flash message."""
     vbox = _get_vbox()
     ok, msg = vbox.start_vm(machine_id)
     if ok:
         flash("VM berhasil dijalankan.", "success")
     else:
         flash(f"Gagal menjalankan VM: {msg}", "error")
-    return redirect(url_for("vm.index"))
+    return _redirect_after_vm_action(machine_id)
 
 
 @vm_bp.route("/vm/<machine_id>/stop", methods=["POST"])
 def stop_vm(machine_id):
-    """Matikan VM lalu redirect ke index dengan flash message."""
+    """Matikan VM paksa (IConsole_powerDown), alur langkah 8 di vboxwebsrv-SOAP-reference.md."""
     vbox = _get_vbox()
-    ok, msg = vbox.stop_vm(machine_id)
+    ok, msg = vbox.stop_vm(machine_id, graceful=False)
     if ok:
-        flash("VM berhasil dihentikan.", "success")
+        flash("VM dihentikan (paksa, setara powerDown).", "success")
     else:
         flash(f"Gagal menghentikan VM: {msg}", "error")
-    return redirect(url_for("vm.index"))
+    return _redirect_after_vm_action(machine_id)
+
+
+@vm_bp.route("/vm/<machine_id>/stop-graceful", methods=["POST"])
+def stop_vm_graceful(machine_id):
+    """Kirim sinyal mati halus (IConsole_powerButton); OS di dalam VM yang mendukung bisa shutdown rapi."""
+    vbox = _get_vbox()
+    ok, msg = vbox.stop_vm(machine_id, graceful=True)
+    if ok:
+        flash(
+            "Sinyal matikan halus dikirim. Jika OS di dalam VM mendukung, VM akan mati setelah shutdown normal.",
+            "success",
+        )
+    else:
+        flash(f"Gagal mengirim matikan halus: {msg}", "error")
+    return _redirect_after_vm_action(machine_id)
 
 
 @vm_bp.route("/vm/<machine_id>")
 def vm_detail(machine_id):
-    """Detail satu VM: ambil dari list, render vm_detail.html."""
+    """Detail satu VM: SOAP IMachine_* (nama, status, UUID, CPU, RAM, OS), lalu vm_detail.html."""
     vbox = _get_vbox()
-    machines, error = vbox.list_machines()
+    vm, error = vbox.get_machine_detail(machine_id)
     if error:
         flash(error, "error")
-        return redirect(url_for("vm.index"))
-    vm = next((m for m in machines if m["id"] == machine_id), None)
-    if not vm:
-        flash("VM tidak ditemukan.", "error")
         return redirect(url_for("vm.index"))
     return render_template("vm_detail.html", vm=vm)

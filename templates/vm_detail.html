@@ -1,14 +1,39 @@
 {% extends "base.html" %}
 {% block title %}{{ vm.name }} – VBox-Manage{% endblock %}
 
+{% block extra_css %}
+<style>
+    .vm-detail-spec { border-collapse: collapse; width: 100%; max-width: 36rem; margin: 0.75rem 0 1.25rem; }
+    .vm-detail-spec th { width: 11rem; vertical-align: top; }
+    .vm-detail-actions { margin-top: 1rem; }
+</style>
+{% endblock %}
+
 {% block content %}
 <p><a href="{{ url_for('vm.index') }}">&larr; Kembali ke daftar VM</a></p>
 <h2>{{ vm.name }}</h2>
-<p><strong>Status:</strong> {{ vm.state }}</p>
-<form action="{{ url_for('vm.start_vm', machine_id=vm.id) }}" method="post">
-    <button type="submit" class="btn btn-start">Start</button>
+<table class="vm-detail-spec">
+    <tbody>
+        <tr><th>ID mesin (UUID)</th><td><code style="word-break: break-all;">{{ vm.id }}</code></td></tr>        
+        <tr><th>vCPU</th><td>{% if vm.cpu_count is not none %}{{ vm.cpu_count }}{% else %}—{% endif %}</td></tr>
+        <tr><th>RAM</th><td>{% if vm.memory_mb is not none %}{{ vm.memory_mb }} MB{% else %}—{% endif %}</td></tr>
+        <tr><th>Tipe OS</th><td><code>{{ vm.os_type_id }}</code></td></tr>
+        <tr><th>Status</th><td>{{ vm.state }}</td></tr>
+    </tbody>
+</table>
+<div class="vm-detail-actions">
+<form action="{{ url_for('vm.start_vm', machine_id=vm.id, next='detail') }}" method="post">
+    <button type="submit" class="btn btn-start" {% if vm.running %}disabled title="VM sudah menyala"{% endif %}>Start</button>
 </form>
-<form action="{{ url_for('vm.stop_vm', machine_id=vm.id) }}" method="post">
-    <button type="submit" class="btn btn-stop">Stop</button>
+<form action="{{ url_for('vm.stop_vm', machine_id=vm.id, next='detail') }}" method="post">
+    <button type="submit" class="btn btn-stop" {% if not vm.running %}disabled title="Hanya saat VM menyala"{% endif %}>Hentikan (paksa)</button>
 </form>
+<form action="{{ url_for('vm.stop_vm_graceful', machine_id=vm.id, next='detail') }}" method="post">
+    <button type="submit" class="btn btn-graceful" {% if not vm.running %}disabled title="Hanya saat VM menyala"{% endif %}>Matikan halus</button>
+</form>
+</div>
+<p class="hint" style="font-size:0.85em;color:#555;max-width:36rem;margin-top:0.75rem;">
+    <strong>Hentikan (paksa):</strong> <code>IConsole_powerDown</code>.
+    <strong>Matikan halus:</strong> <code>IConsole_powerButton</code> — bergantung pada OS di dalam VM.
+</p>
 {% endblock %}

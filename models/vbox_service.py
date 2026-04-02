@@ -1,6 +1,6 @@
 """
 Model: Layer akses ke VirtualBox via SOAP (vboxwebsrv).
-Format permintaan mengikuti SampleConnection.md (POST root URL, elemen param tanpa prefix vbox:).
+Format permintaan mengikuti vboxwebsrv-SOAP-reference.md (POST root URL, elemen param tanpa prefix vbox:).
 """
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import fromstring
@@ -29,7 +29,7 @@ def _xml_text(val):
 
 def _soap_call(base_url, method_name, params=None, timeout=10):
     """
-    Kirim SOAP ke root URL vboxwebsrv (sama seperti contoh curl di SampleConnection.md).
+    Kirim SOAP ke root URL vboxwebsrv (sama seperti contoh di vboxwebsrv-SOAP-reference.md).
     params: dict nama elemen -> nilai string (elemen anak tanpa prefix vbox:).
     """
     params = params or {}
@@ -180,6 +180,61 @@ def _extract_text(element):
     return (element.text or "").strip() or (next((e.text for e in element), "") or "")
 
 
+def _uuid_match(a, b):
+    """Bandingkan UUID mesin (abaikan case, kurung kurawal opsional)."""
+    def key(s):
+        t = (s or "").strip().lower()
+        if len(t) >= 2 and t[0] == "{" and t[-1] == "}":
+            t = t[1:-1]
+        return t
+
+    return key(a) == key(b) and bool(key(a))
+
+
+def _vm_state_is_running(state_val):
+    """
+    True jika VM dianggap menyala untuk tombol Start/Stop di UI.
+    vboxwebsrv bisa mengembalikan nama enum (mis. Running, PoweredOn) atau angka MachineState.
+    """
+    s = (str(state_val).strip() if state_val is not None else "") or ""
+    if not s:
+        return False
+    n = "".join(c for c in s.upper() if c not in " _")
+    if n.startswith("MACHINESTATE"):
+        n = n[len("MACHINESTATE") :]
+    # Mesin benar-benar mati / tidak jalan (jangan pakai substring "POWEREDON" — bentrok dengan POWEREDOFF)
+    if n in (
+        "NULL",
+        "POWEREDOFF",
+        "SAVED",
+        "ABORTED",
+        "ABORTEDSNAPSHOTTING",
+    ):
+        return False
+    if n in (
+        "POWEREDON",
+        "RUNNING",
+        "PAUSED",
+        "STARTING",
+        "RESTORING",
+        "STOPPING",
+        "STUCK",
+        "RESETTING",
+        "SETTINGUP",
+    ):
+        return True
+    if "RUNNING" in n:
+        return True
+    if n.startswith(("FIRSTONLINE", "LASTONLINE", "TELEPORTING", "LIVESNAPSHOTTING")):
+        return True
+    try:
+        v = int(s)
+    except ValueError:
+        return False
+    # Umum di SDK VirtualBox: PoweredOff=1, Saved=2, …, Running sering ≥ 5 (variasi versi)
+    return v >= 5
+
+
 class VBoxService:
     """
     Singleton-style service untuk VirtualBox SOAP.
@@ -220,7 +275,7 @@ class VBoxService:
 
     def list_machines(self):
         """
-        Daftar semua VM: list of dict {id, name, state}.
+        Daftar semua VM: list of dict {id, name, state, running}.
         Mengembalikan ([], None) jika sukses, ([], "pesan error") jika gagal.
         """
         try:
@@ -242,9 +297,21 @@ class VBoxService:
             for ref in machine_refs:
                 name_el = _soap_call(self.base_url, "IMachine_getName", params={"_this": ref})
                 state_el = _soap_call(self.base_url, "IMachine_getState", params={"_this": ref})
+                id_el = _soap_call(self.base_url, "IMachine_getId", params={"_this": ref})
                 name = _extract_text(name_el) if name_el is not None else "?"
                 state = _extract_text(state_el) if state_el is not None else "Unknown"
-                machines.append({"id": ref, "name": name or ref, "state": state})
+                machine_uuid = _extract_text(id_el) if id_el is not None else ""
+                machine_uuid = machine_uuid.strip()
+                # Handle SOAP tidak stabil antar request; UUID tetap sama untuk URL/detail.
+                public_id = machine_uuid if machine_uuid else ref
+                machines.append(
+                    {
+                        "id": public_id,
+                        "name": name or ref,
+                        "state": state,
+                        "running": _vm_state_is_running(state),
+                    }
+                )
 
             return machines, None
         except RuntimeError as e:
@@ -252,9 +319,87 @@ class VBoxService:
         except Exception as e:
             return [], str(e)
 
-    def start_vm(self, machine_id):
-        """Jalankan VM (headless), alur seperti SampleConnection.md §7."""
+    def resolve_machine_ref(self, machine_id):
+        """
+        Ubah id publik (UUID dari IMachine_getId) jadi _this ref saat ini untuk SOAP.
+        Jika machine_id sudah ref yang valid dari panggilan terbaru, kembalikan yang cocok.
+        """
         try:
+            vbox_token = self._ensure_vbox()
+            result = _soap_call(
+                self.base_url,
+                "IVirtualBox_getMachines",
+                params={"_this": vbox_token},
+            )
+            if result is None:
+                return None
+            for ref in _machine_refs_from_get_machines(result):
+                id_el = _soap_call(self.base_url, "IMachine_getId", params={"_this": ref})
+                mid = _extract_text(id_el) if id_el is not None else ""
+                if mid and _uuid_match(mid, machine_id):
+                    return ref
+                if ref == machine_id:
+                    return ref
+            return None
+        except Exception:
+            return None
+
+    def _imachine_int_property(self, ref, method_name):
+        el = _soap_call(self.base_url, method_name, params={"_this": ref})
+        raw = _extract_text(el) if el is not None else ""
+        raw = (raw or "").strip()
+        if not raw:
+            return None
+        try:
+            return int(raw)
+        except ValueError:
+            return None
+
+    def get_machine_detail(self, machine_id):
+        """
+        Satu VM lengkap untuk halaman detail: nama, status, UUID, CPU, RAM (MB), tipe OS.
+        SOAP: IMachine_getName/State/Id/getCPUCount/getMemorySize/getOSTypeId (lihat vboxwebsrv-SOAP-reference.md §6).
+        """
+        try:
+            ref = self.resolve_machine_ref(machine_id)
+            if not ref:
+                return None, "VM tidak ditemukan."
+
+            name_el = _soap_call(self.base_url, "IMachine_getName", params={"_this": ref})
+            state_el = _soap_call(self.base_url, "IMachine_getState", params={"_this": ref})
+            id_el = _soap_call(self.base_url, "IMachine_getId", params={"_this": ref})
+            name = _extract_text(name_el) if name_el is not None else "?"
+            state = _extract_text(state_el) if state_el is not None else "Unknown"
+            machine_uuid = (_extract_text(id_el) if id_el is not None else "").strip()
+            public_id = machine_uuid if machine_uuid else ref
+
+            cpu_count = self._imachine_int_property(ref, "IMachine_getCPUCount")
+            memory_mb = self._imachine_int_property(ref, "IMachine_getMemorySize")
+            os_el = _soap_call(self.base_url, "IMachine_getOSTypeId", params={"_this": ref})
+            os_type_id = _extract_text(os_el) if os_el is not None else ""
+            os_type_id = os_type_id.strip() or "—"
+
+            vm = {
+                "id": public_id,
+                "name": name or ref,
+                "state": state,
+                "running": _vm_state_is_running(state),
+                "cpu_count": cpu_count,
+                "memory_mb": memory_mb,
+                "os_type_id": os_type_id,
+            }
+            return vm, None
+        except RuntimeError as e:
+            return None, str(e)
+        except Exception as e:
+            return None, str(e)
+
+    def start_vm(self, machine_id):
+        """Jalankan VM (headless), alur seperti langkah 7 di vboxwebsrv-SOAP-reference.md."""
+        try:
+            ref = self.resolve_machine_ref(machine_id)
+            if not ref:
+                return False, "VM tidak ditemukan (UUID tidak dikenali)."
             vbox_token = self._ensure_vbox()
             session_result = _soap_call(
                 self.base_url,
@@ -268,7 +413,7 @@ class VBoxService:
             _soap_call(
                 self.base_url,
                 "IMachine_launchVMProcess",
-                params={"_this": machine_id, "session": session_ref, "type": "headless"},
+                params={"_this": ref, "session": session_ref, "type": "headless"},
             )
             return True, None
         except RuntimeError as e:
@@ -276,10 +421,19 @@ class VBoxService:
         except Exception as e:
             return False, str(e)
 
-    def stop_vm(self, machine_id):
-        """Matikan VM (powerDown). Parameter SOAP sama pola dengan contoh (_this + isi teks)."""
+    def stop_vm(self, machine_id, graceful=False):
+        """
+        Matikan VM mengikuti langkah 8 di vboxwebsrv-SOAP-reference.md:
+        getSessionObject → lockMachine(Shared) → getConsole → powerDown atau powerButton → unlockMachine.
+        unlockMachine dipanggil di finally bila lock berhasil, agar kunci tidak tertinggal.
+        """
+        ref = self.resolve_machine_ref(machine_id)
+        if not ref:
+            return False, "VM tidak ditemukan (UUID tidak dikenali)."
+        vbox_token = self._ensure_vbox()
+        session_ref = None
+        locked = False
         try:
-            vbox_token = self._ensure_vbox()
             session_result = _soap_call(
                 self.base_url,
                 "IWebsessionManager_getSessionObject",
@@ -292,27 +446,43 @@ class VBoxService:
             _soap_call(
                 self.base_url,
                 "IMachine_lockMachine",
-                params={"_this": machine_id, "session": session_ref, "lockType": "Shared"},
+                params={"_this": ref, "session": session_ref, "lockType": "Shared"},
             )
+            locked = True
+
             console_result = _soap_call(
                 self.base_url,
                 "ISession_getConsole",
                 params={"_this": session_ref},
             )
             console_ref = _extract_ref(console_result)
-            if console_ref:
+            if not console_ref:
+                return False, "Tidak dapat mengakses konsol (VM mungkin tidak menyala)."
+
+            if graceful:
+                _soap_call(
+                    self.base_url,
+                    "IConsole_powerButton",
+                    params={"_this": console_ref},
+                )
+            else:
                 _soap_call(
                     self.base_url,
                     "IConsole_powerDown",
                     params={"_this": console_ref},
                 )
-            _soap_call(
-                self.base_url,
-                "ISession_unlockMachine",
-                params={"_this": session_ref},
-            )
             return True, None
         except RuntimeError as e:
             return False, str(e)
         except Exception as e:
             return False, str(e)
+        finally:
+            if locked and session_ref:
+                try:
+                    _soap_call(
+                        self.base_url,
+                        "ISession_unlockMachine",
+                        params={"_this": session_ref},
+                    )
+                except Exception:
+                    pass

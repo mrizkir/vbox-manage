@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Daftar VM – VBox-Manage{% endblock %}
 
+{% block extra_css %}
+<style>
+    table.vm-table { width: 100%; max-width: none; }
+</style>
+{% endblock %}
+
 {% block content %}
 <p>Daftar Virtual Machine. Ubah tampilan di <code>templates/index.html</code> (Jinja).</p>
 
@@ -12,7 +18,7 @@
 {% endif %}
 
 {% if machines %}
-<table>
+<table class="vm-table">
     <thead>
         <tr>
             <th>Nama</th>
@@ -27,10 +33,13 @@
             <td>{{ vm.state }}</td>
             <td>
                 <form action="{{ url_for('vm.start_vm', machine_id=vm.id) }}" method="post">
-                    <button type="submit" class="btn btn-start">Start</button>
+                    <button type="submit" class="btn btn-start" {% if vm.running %}disabled title="VM sudah menyala"{% endif %}>Start</button>
                 </form>
                 <form action="{{ url_for('vm.stop_vm', machine_id=vm.id) }}" method="post">
-                    <button type="submit" class="btn btn-stop">Stop</button>
+                    <button type="submit" class="btn btn-stop" {% if not vm.running %}disabled title="Hanya saat VM menyala"{% endif %}>Hentikan (paksa)</button>
+                </form>
+                <form action="{{ url_for('vm.stop_vm_graceful', machine_id=vm.id) }}" method="post">
+                    <button type="submit" class="btn btn-graceful" {% if not vm.running %}disabled title="Hanya saat VM menyala"{% endif %}>Matikan halus</button>
                 </form>
             </td>
         </tr>
