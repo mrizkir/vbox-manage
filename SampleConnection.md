@@ -9,7 +9,7 @@ VBoxManage list systemproperties
 ```
 Kemudian cari bagian Webservice auth. library
 
-Bila bernilai null, maka otentikasi berhasil.
+Bila bernilai null, maka proses otentikasi di dalam vboxmanage berhasil dimatikan.
 
 ### 3. Jalankan vboxsrv
 ```bash
@@ -70,3 +70,15 @@ Lihat bagian, returnval, terdapat nilai
 berarti koneksi berhasil.
 
 Selanjutya koneksi, ke vbox api menggunakan: 634f0d8fd6ef0e49-0000000000000001
+
+### 5. Mendapatkan daftar vms
+```bash
+<?xml version="1.0"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
+  <SOAP-ENV:Body>
+    <vbox:IVirtualBox_getMachines>
+      <_this>634f0d8fd6ef0e49-0000000000000001</_this>
+    </vbox:IVirtualBox_getMachines>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>'
+```
