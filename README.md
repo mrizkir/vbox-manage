@@ -55,7 +55,7 @@ File `config.py` tidak di-commit (ada di `.gitignore`). Setelah clone, salin tem
 ```bash
 cp config.example.py config.py
 ```
-Atau set variabel lingkungan: `VBOX_HOST`, `VBOX_PORT`, `SECRET_KEY`.
+Atau set variabel lingkungan: `VBOX_HOST`, `VBOX_PORT`, `VBOX_USER`, `VBOX_PW` (logon vboxwebsrv), `SECRET_KEY`.
 
 ### 5. Jalankan VBoxWebSrv
 ```bash

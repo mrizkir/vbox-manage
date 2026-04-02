@@ -8,6 +8,9 @@ import os
 # VirtualBox Web Service (vboxwebsrv)
 VBOX_HOST = os.environ.get("VBOX_HOST", "127.0.0.1")
 VBOX_PORT = os.environ.get("VBOX_PORT", "18083")
+# Kredensial logon (kosong = authentication null; isi jika vboxwebsrv pakai auth)
+VBOX_USER = os.environ.get("VBOX_USER", "")
+VBOX_PW = os.environ.get("VBOX_PW", "")
 
 def get_vbox_base_url():
     """URL dasar vboxwebsrv (tanpa path)."""

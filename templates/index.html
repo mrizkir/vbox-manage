@@ -5,7 +5,10 @@
 <p>Daftar Virtual Machine. Ubah tampilan di <code>templates/index.html</code> (Jinja).</p>
 
 {% if error %}
-    <p class="flash error">{{ error }}</p>
+    <div class="flash error">
+        <strong>Error:</strong>
+        <pre style="white-space: pre-wrap; margin: 0.5rem 0 0; font-size: 0.9em;">{{ error }}</pre>
+    </div>
 {% endif %}
 
 {% if machines %}
