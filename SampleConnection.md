@@ -150,3 +150,39 @@ ID VM
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 ```
+
+### 7. Menjalankan VM (PoweredOn)
+Sebelum menyalakan dapatkan SESSION_HANDLE:
+
+```
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
+  <SOAP-ENV:Body>
+    <vbox:IWebsessionManager_getSessionObject>
+      <refIVirtualBox>TOKEN</refIVirtualBox>
+    </vbox:IWebsessionManager_getSessionObject>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+```
+TOKEN di isi dari hasil (IWebsessionManager_logonResponse): 
+
+selanjutnya:
+
+```
+<?xml version="1.0"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vbox="http://www.virtualbox.org/">
+  <SOAP-ENV:Body>
+    <vbox:IMachine_launchVMProcess>
+      <_this>MACHINE_HANDLE</_this>
+      <session>SESSION_HANDLE</session>
+      <type>headless</type>
+    </vbox:IMachine_launchVMProcess>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+```
+
+MACHINE_HANDLE: diperoleh dari salah satu id IVirtualBox_getMachines
+SESSION_HANDLE: diperoleh dari IWebsessionManager_getSessionObject
+type bisa diisi:
+headless → tanpa GUI (untuk server)
+gui → dengan tampilan jendela VM
+
